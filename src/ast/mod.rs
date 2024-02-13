@@ -1941,6 +1941,8 @@ pub enum Statement {
         like: Option<ObjectName>,
         clone: Option<ObjectName>,
         engine: Option<String>,
+        row_format: Option<String>,
+        key_block_size: Option<String>,
         comment: Option<String>,
         auto_increment_offset: Option<u32>,
         default_charset: Option<String>,
@@ -2631,6 +2633,10 @@ pub enum Statement {
     /// ```
     /// Note: this is a MySQL-specific statement. See <https://dev.mysql.com/doc/refman/8.0/en/lock-tables.html>
     UnlockTables,
+
+    Delimeter {
+        delimeter: String,
+    },
     /// ```sql
     /// UNLOAD(statement) TO <destination> [ WITH options ]
     /// ```
@@ -3224,6 +3230,8 @@ impl fmt::Display for Statement {
                 clone,
                 default_charset,
                 engine,
+                row_format,
+                key_block_size,
                 comment,
                 auto_increment_offset,
                 collation,
@@ -3425,6 +3433,12 @@ impl fmt::Display for Statement {
                 }
                 if let Some(collation) = collation {
                     write!(f, " COLLATE={collation}")?;
+                }
+                if let Some(row_format) = row_format {
+                    write!(f, " ROW_FORMAT={row_format}")?;
+                }
+                if let Some(key_block_size) = key_block_size {
+                    write!(f, " KEY_BLOCK_SIZE={key_block_size}")?;
                 }
 
                 if on_commit.is_some() {
@@ -4285,6 +4299,12 @@ impl fmt::Display for Statement {
 
                 Ok(())
             }
+            Statement::SetRole { context_modifier, role_name } => todo!(),
+            Statement::SetRole {
+                context_modifier,
+                role_name,
+            } => todo!(),
+            Statement::Delimeter { delimeter } => write!(f, "DELIMETER {delimeter}"),
         }
     }
 }

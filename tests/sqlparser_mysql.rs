@@ -702,9 +702,9 @@ fn parse_create_table_comment() {
 #[test]
 fn parse_create_table_auto_increment_offset() {
     let canonical =
-        "CREATE TABLE foo (bar INT NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT 123";
+        "CREATE TABLE foo (bar INT NOT NULL AUTO_INCREMENT) ENGINE=InnoDB ROW_FORMAT=compressed AUTO_INCREMENT 123";
     let with_equal =
-        "CREATE TABLE foo (bar INT NOT NULL AUTO_INCREMENT) ENGINE=InnoDB AUTO_INCREMENT=123";
+        "CREATE TABLE foo (bar INT NOT NULL AUTO_INCREMENT) ENGINE=InnoDB ROW_FORMAT=compressed AUTO_INCREMENT=123";
 
     for sql in [canonical, with_equal] {
         match mysql().one_statement_parses_to(sql, canonical) {
@@ -801,6 +801,32 @@ fn parse_create_table_collate() {
                 columns
             );
             assert_eq!(collation, Some("utf8mb4_0900_ai_ci".to_string()));
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn parse_create_table_row_format() {
+    let sql = "CREATE TABLE foo (id INT(11)) ROW_FORMAT=compressed";
+    match mysql().verified_stmt(sql) {
+        Statement::CreateTable {
+            name,
+            columns,
+            row_format,
+            ..
+        } => {
+            assert_eq!(name.to_string(), "foo");
+            assert_eq!(
+                vec![ColumnDef {
+                    name: Ident::new("id"),
+                    data_type: DataType::Int(Some(11)),
+                    collation: None,
+                    options: vec![],
+                },],
+                columns
+            );
+            assert_eq!(row_format, Some("compressed".to_string()));
         }
         _ => unreachable!(),
     }

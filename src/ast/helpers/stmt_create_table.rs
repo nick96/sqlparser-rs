@@ -65,6 +65,8 @@ pub struct CreateTableBuilder {
     pub like: Option<ObjectName>,
     pub clone: Option<ObjectName>,
     pub engine: Option<String>,
+    pub row_format: Option<String>,
+    pub key_block_size: Option<String>,
     pub comment: Option<String>,
     pub auto_increment_offset: Option<u32>,
     pub default_charset: Option<String>,
@@ -112,6 +114,8 @@ impl CreateTableBuilder {
             cluster_by: None,
             options: None,
             strict: false,
+            row_format: None,
+            key_block_size: None,
         }
     }
     pub fn or_replace(mut self, or_replace: bool) -> Self {
@@ -207,6 +211,16 @@ impl CreateTableBuilder {
         self
     }
 
+    pub fn row_format(mut self, row_format: Option<String>) -> Self {
+        self.row_format = row_format;
+        self
+    }
+
+    pub fn key_block_size(mut self, key_block_size: Option<String>) -> Self {
+        self.key_block_size = key_block_size;
+        self
+    }
+
     pub fn comment(mut self, comment: Option<String>) -> Self {
         self.comment = comment;
         self
@@ -284,6 +298,8 @@ impl CreateTableBuilder {
             like: self.like,
             clone: self.clone,
             engine: self.engine,
+            row_format: self.row_format,
+            key_block_size: self.key_block_size,
             comment: self.comment,
             auto_increment_offset: self.auto_increment_offset,
             default_charset: self.default_charset,
@@ -327,6 +343,8 @@ impl TryFrom<Statement> for CreateTableBuilder {
                 like,
                 clone,
                 engine,
+                row_format,
+                key_block_size,
                 comment,
                 auto_increment_offset,
                 default_charset,
@@ -359,6 +377,7 @@ impl TryFrom<Statement> for CreateTableBuilder {
                 like,
                 clone,
                 engine,
+                row_format,
                 comment,
                 auto_increment_offset,
                 default_charset,
@@ -370,6 +389,7 @@ impl TryFrom<Statement> for CreateTableBuilder {
                 cluster_by,
                 options,
                 strict,
+                key_block_size,
             }),
             _ => Err(ParserError::ParserError(format!(
                 "Expected create table statement, but received: {stmt}"

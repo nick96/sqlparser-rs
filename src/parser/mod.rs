@@ -535,6 +535,10 @@ impl<'a> Parser<'a> {
                 Keyword::LOAD if dialect_of!(self is DuckDbDialect | GenericDialect) => {
                     Ok(self.parse_load()?)
                 }
+                Keyword::DELIMITER => Ok(Statement::Delimeter {
+                    delimeter: self.next_token().to_string(),
+                }),
+
                 _ => self.expected("an SQL statement", next_token),
             },
             Token::LParen => {
@@ -4864,6 +4868,34 @@ impl<'a> Parser<'a> {
             None
         };
 
+        let row_format = if self.parse_keyword(Keyword::ROW_FORMAT) {
+            self.expect_token(&Token::Eq)?;
+            let next_token = self.next_token();
+            match next_token.token {
+                Token::Word(w) => Some(w.value),
+                _ => self.expected("identifier", next_token)?,
+            }
+        } else {
+            None
+        };
+
+        let key_block_size = if self.parse_keyword(Keyword::KEY_BLOCK_SIZE) {
+            self.expect_token(&Token::Eq)?;
+            let next_token = self.next_token();
+            match next_token.token {
+                Token::Number(num, _) => match num.parse() {
+                    Ok(n) => Some(n),
+                    Err(e) => parser_err!(
+                        format!("Could not parse '{num}' as number: {e}"),
+                        next_token.location
+                    )?,
+                },
+                _ => self.expected("number", next_token)?,
+            }
+        } else {
+            None
+        };
+
         let on_commit: Option<OnCommit> =
             if self.parse_keywords(&[Keyword::ON, Keyword::COMMIT, Keyword::DELETE, Keyword::ROWS])
             {
@@ -4911,6 +4943,8 @@ impl<'a> Parser<'a> {
             .like(like)
             .clone_clause(clone)
             .engine(engine)
+            .row_format(row_format)
+            .key_block_size(key_block_size)
             .comment(comment)
             .auto_increment_offset(auto_increment_offset)
             .order_by(order_by)
@@ -6925,7 +6959,16 @@ impl<'a> Parser<'a> {
                 self.next_token();
                 Ok(vec![])
             } else {
-                let cols = self.parse_comma_separated(|p| p.parse_identifier(false))?;
+                let cols = self.parse_comma_separated(|p| {
+                    // TODO: The column list should really be a list
+                    // of expressions, rather than identifiers, but
+                    // that'll require a of plumbing I don't need to
+                    // get this working.
+                    p.parse_expr().map(|e| Ident {
+                        value: e.to_string(),
+                        quote_style: None,
+                    })
+                })?;
                 self.expect_token(&Token::RParen)?;
                 Ok(cols)
             }
